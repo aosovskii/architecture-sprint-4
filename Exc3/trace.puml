@@ -1,0 +1,69 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+skinparam sequenceMessageAlign center
+skinparam noteBackgroundColor LightBlue
+
+Person(customer, "Customer")
+Person(seller, "Seller")
+Person(apiUser, "API User")
+Person(operator, "Operator")
+
+Container_Boundary(internetShopSystem, "Internet Shop System") {
+    Container(is, "Internet Shop", "Vue, TypeScript, ThreeJS", "User can make an order")
+    Container(shopAPI, "Shop API", "SpringBoot", "Handles shop operations")
+    ContainerDb(shopDB, "Shop DB", "PostgreSQL", "Stores customer orders")
+    Container(crm, "CRM", "Vue, TypeScript", "Web-based CRM")
+    Container(crmAPI, "CRM API", "SpringBoot", "Handles CRM operations")
+    Container(mes, "MES", "React, TypeScript", "Manufacturing Execution System")
+    Container(mesAPI, "MES API", "C#", "Manages orders and pricing")
+    ContainerDb(mesDB, "MES DB", "PostgreSQL", "Stores MES-related data")
+    Container(filesStorage, "3D Files Storage", "S3-based storage", "Stores 3D models")
+    ContainerQueue(messageQueue, "Message Queue", "RabbitMQ", "Handles messaging between systems")
+    Container(tracingSystem, "Tracing System", "OpenTelemetry", "New Component") #red
+    Container(logCollector, "Log Collector", "Centralized Logging", "New Component") #red
+}
+
+Rel(customer, is, "Requests order list")
+Rel(is, shopAPI, "Fetch order list")
+Rel(shopAPI, tracingSystem, "Logs request")
+Rel(shopAPI, shopDB, "Reads order data")
+Rel(shopDB, shopAPI, "Returns order list")
+Rel(shopAPI, logCollector, "Stores logs")
+Rel(shopAPI, is, "Returns order list")
+Rel(is, customer, "Displays order list")
+
+Rel(customer, is, "Updates order status")
+Rel(is, shopAPI, "Request status update")
+Rel(shopAPI, tracingSystem, "Logs status change")
+Rel(shopAPI, shopDB, "Updates status in DB")
+Rel(shopAPI, logCollector, "Stores logs")
+Rel(shopAPI, messageQueue, "Sends status event")
+Rel(messageQueue, crmAPI, "Notifies CRM of status change")
+Rel(crmAPI, crm, "Updates CRM system")
+Rel(crm, seller, "Displays order status")
+Rel(crmAPI, tracingSystem, "Logs status notification")
+Rel(crmAPI, logCollector, "Stores logs")
+Rel(shopAPI, is, "Confirms status update")
+Rel(is, customer, "Returns status confirmation")
+
+Rel(mes, mesAPI, "Fetch/Update manufacturing data")
+Rel(mesAPI, mesDB, "Reads/Writes MES data")
+Rel(mesAPI, logCollector, "Stores MES API logs")
+Rel(mesAPI, tracingSystem, "Logs MES API interactions")
+
+Rel(filesStorage, shopAPI, "Provides 3D file storage")
+Rel(shopAPI, messageQueue, "Triggers file storage events")
+Rel(messageQueue, mesAPI, "Notifies MES of updates")
+
+note right of tracingSystem #red
+Logs and traces system interactions.
+Provides monitoring and error tracking.
+end note
+
+note right of logCollector #red
+Centralized logging from all components.
+Facilitates debugging and analysis.
+end note
+
+@enduml

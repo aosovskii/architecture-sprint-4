@@ -1,0 +1,80 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+
+skinparam sequenceMessageAlign center
+skinparam noteBackgroundColor LightBlue
+
+Person(customer, "Customer")
+Person(seller, "Seller")
+Person(apiUser, "API User")
+Person(operator, "Operator")
+
+Container_Boundary(internetShopSystem, "Internet Shop System") {
+    Container(is, "Internet Shop", "Vue, TypeScript, ThreeJS", "User can make an order")
+    Container(shopAPI, "Shop API", "SpringBoot", "Handles shop operations")
+    ContainerDb(shopDB, "Shop DB", "PostgreSQL", "Stores customer orders")
+    Container(crm, "CRM", "Vue, TypeScript", "Web-based CRM")
+    Container(crmAPI, "CRM API", "SpringBoot", "Handles CRM operations")
+    Container(mes, "MES", "React, TypeScript", "Manufacturing Execution System")
+    Container(mesAPI, "MES API", "C#", "Manages orders and pricing")
+    ContainerDb(mesDB, "MES DB", "PostgreSQL", "Stores MES-related data")
+    Container(filesStorage, "3D Files Storage", "S3-based storage", "Stores 3D models")
+    ContainerQueue(messageQueue, "Message Queue", "RabbitMQ", "Handles messaging between systems")
+    Container(tracingSystem, "Tracing System", "OpenTelemetry", "New Component") #red
+    Container(logCollector, "Log Collector", "ElasticSearch & Kibana", "Centralized Logging") #red
+    Container(logSecurity, "Log Security Service", "Custom Service", "Manages sensitive log data") #red
+    Container(logStorage, "Log Storage", "ElasticSearch Index", "Stores logs securely") #red
+}
+
+Rel(customer, is, "Requests order list")
+Rel(is, shopAPI, "Fetch order list")
+Rel(shopAPI, tracingSystem, "Logs request")
+Rel(shopAPI, shopDB, "Reads order data")
+Rel(shopDB, shopAPI, "Returns order list")
+Rel(shopAPI, logCollector, "Stores logs")
+Rel(shopAPI, is, "Returns order list")
+Rel(is, customer, "Displays order list")
+
+Rel(customer, is, "Updates order status")
+Rel(is, shopAPI, "Request status update")
+Rel(shopAPI, tracingSystem, "Logs status change")
+Rel(shopAPI, shopDB, "Updates status in DB")
+Rel(shopAPI, logCollector, "Stores logs")
+Rel(shopAPI, messageQueue, "Sends status event")
+Rel(messageQueue, crmAPI, "Notifies CRM of status change")
+Rel(crmAPI, tracingSystem, "Logs status notification")
+Rel(crmAPI, logCollector, "Stores logs")
+Rel(shopAPI, is, "Confirms status update")
+Rel(is, customer, "Returns status confirmation")
+
+Rel(logCollector, logStorage, "Saves logs securely")
+Rel(logCollector, logSecurity, "Processes sensitive data")
+Rel(logSecurity, logStorage, "Encrypts sensitive logs")
+Rel(logStorage, logCollector, "Retrieves logs for analysis")
+
+note right of tracingSystem #red
+Система логирования и трассировки взаимодействий.
+Обеспечивает мониторинг и отслеживание ошибок.
+end note
+
+note right of logCollector #red
+Централизованное логирование с использованием ElasticSearch и Kibana.
+Все логи отправляются сюда для индексации и визуализации.
+end note
+
+note right of logSecurity #red
+Управление чувствительными данными в логах.
+1. Фильтрует PII и учетные данные.
+2. Шифрует чувствительные поля.
+3. Применяет политики доступа.
+end note
+
+note right of logStorage #red
+Политика: Логи хранятся в отдельных индексах для каждой системы.
+Хранение: Логи хранятся 30 дней.
+Размер: Каждый индекс ограничен 10 ГБ.
+Доступ: Ограничен для адиминистративного персонала.
+end note
+
+@enduml

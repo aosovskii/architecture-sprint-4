@@ -1,0 +1,33 @@
+@startuml
+
+participant "Internet Shop" as IS
+participant "Shop API" as ShopAPI
+participant "Shop DB" as ShopDB
+participant "CRM API" as CRMAPI
+participant "MES API" as MESAPI
+participant "MES DB" as MESDB
+participant "Cache" as Cache
+
+== Чтение списка заказов ==
+IS -> ShopAPI: Запрос списка заказов
+ShopAPI -> Cache: Проверка наличия в кеше (по ключу)
+alt Заказы есть в кеше
+    Cache --> ShopAPI: Возвращает список заказов
+else Заказов нет в кеше
+    ShopAPI -> ShopDB: Запрос списка заказов
+    ShopDB --> ShopAPI: Список заказов
+    ShopAPI -> Cache: Запись списка заказов в кеш (по ключу)
+end
+ShopAPI --> IS: Возвращает список заказов
+
+== Запись об изменении статуса заказа ==
+IS -> ShopAPI: Обновить статус заказа (SUBMITTED)
+ShopAPI -> ShopDB: Обновление статуса заказа (SUBMITTED)
+ShopDB --> ShopAPI: Подтверждение обновления
+ShopAPI -> Cache: Инвалидация кеша заказа (по ключу)
+ShopAPI --> IS: Статус обновлён успешно
+
+== Кеширование: процесс инвалидации ==
+note right of Cache: Используется инвалидация по ключу
+
+@enduml
